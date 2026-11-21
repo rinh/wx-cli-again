@@ -243,6 +243,10 @@ bash tools/hook-attach.sh 300 && bash tools/map-keys.sh
 
 ## 命令
 
+> 📖 **完整使用说明（面向已安装用户）**：[docs/usage-guide.md](docs/usage-guide.md)
+> 包含会话名定位、`meta` 状态解读、游标分页、类型过滤、JSON/jq 示例、
+> 图片附件提取、daemon 管理与故障排查表。
+
 ### 诊断与密钥
 
 ```bash
