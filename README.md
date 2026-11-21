@@ -19,18 +19,19 @@
 通过 [skills CLI](https://github.com/vercel-labs/skills) 一键安装到 Claude Code、Cursor、Codex 等 agent：
 
 ```bash
-npx skills add botiverse/wx-cli
+npx skills add rinh/wx-cli-again
 ```
 
 或全局安装：
 
 ```bash
-npx skills add botiverse/wx-cli -g
+npx skills add rinh/wx-cli-again -g
 ```
 
 安装后 agent 会自动读取 `SKILL.md`，了解如何安装和调用 wx-cli。
 
-源码与发布仓库：[botiverse/wx-cli](https://github.com/botiverse/wx-cli)。
+本 fork 源码仓库：[rinh/wx-cli-again](https://github.com/rinh/wx-cli-again)；
+上游仓库：[jackwener/wx-cli-again](https://github.com/jackwener/wx-cli-again)。
 
 ---
 
@@ -45,49 +46,88 @@ npx skills add botiverse/wx-cli -g
 
 ## 安装
 
-> **当前仓库 [botiverse/wx-cli](https://github.com/botiverse/wx-cli) 为 private。**  
-> 匿名 `curl` / 公开 npm 旧包（`@jackwener/wx-cli@0.3.0`）**拿不到**本仓库最新二进制。  
-> 有仓库读权限时，请用下面的 **源码构建**（推荐）。
+> **本 fork 仓库不发布预编译二进制**（上游 `botiverse/wx-cli` 为 private，
+> 本 fork 暂无 Releases），因此 **源码构建是唯一可用路径**。
+> 公开 npm 旧包（`@jackwener/wx-cli@0.3.0`）版本严重滞后，不要使用。
 
-> **Apple Silicon 用户注意**：本机 Rust 工具链默认 host 可能是 `x86_64-apple-darwin`，
-> 直出的 x86_64 二进制在取钥阶段会因跨架构注入失败。
+> **Apple Silicon 用户必读**：若 `rustc -vV` 显示 `host: x86_64-apple-darwin`
+> （rustup 装在 Rosetta 下时的常见状态），直接 `cargo build --release` 会产出
+> **x86_64 二进制**——命令成功、版本号正常，但取钥阶段因跨架构注入失败而
+> **完全不可用**。请按下面的方式显式指定目标架构。
 > 完整实测记录（含 arm64 交叉编译、分片密钥补齐的完整排查过程）见
 > **[docs/macos-arm64-install-and-key-extraction-playbook.md](docs/macos-arm64-install-and-key-extraction-playbook.md)**。
 
 ### 从源码构建（推荐）
 
 ```bash
-git clone git@github.com:botiverse/wx-cli.git && cd wx-cli
+git clone https://github.com/rinh/wx-cli-again.git && cd wx-cli-again
+
+# 先确认目标架构
+rustc -vV | grep host
+```
+
+**Apple Silicon（`host: x86_64-apple-darwin`）** —— 显式交叉编译出 arm64：
+
+```bash
+rustup target add aarch64-apple-darwin
+cargo build --release --target aarch64-apple-darwin
+mkdir -p ~/.local/bin
+cp target/aarch64-apple-darwin/release/wx ~/.local/bin/wx
+chmod +x ~/.local/bin/wx
+```
+
+**原生架构（`host: aarch64-apple-darwin` / Linux x86_64 等）**：
+
+```bash
 cargo build --release
-# 安装到用户 PATH（覆盖旧版）
 mkdir -p ~/.local/bin
 cp target/release/wx ~/.local/bin/wx
-wx --version   # 应显示当前 Cargo.toml 版本，如 0.6.3
+chmod +x ~/.local/bin/wx
+```
+
+验证：
+
+```bash
+wx --version          # 应显示当前 Cargo.toml 版本，如 0.6.3
+file ~/.local/bin/wx  # macOS 上确认架构为 arm64
 ```
 
 Windows：
 
 ```powershell
-git clone git@github.com:botiverse/wx-cli.git
-cd wx-cli
+git clone https://github.com/rinh/wx-cli-again.git
+cd wx-cli-again
 cargo build --release
 # 将 target\release\wx.exe 放到 PATH 目录
+```
+
+### 一键安装脚本
+
+`install.sh` / `install.ps1` 已改为**源码构建**安装器（自动识别平台与目标架构）：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/rinh/wx-cli-again/main/install.sh | bash
 ```
 
 ### 已有 clone 时升级
 
 ```bash
 git pull
+# Apple Silicon
+cargo build --release --target aarch64-apple-darwin
+cp target/aarch64-apple-darwin/release/wx ~/.local/bin/wx
+# 原生架构
 cargo build --release
 cp target/release/wx ~/.local/bin/wx
 ```
 
 <details>
-<summary>其他方式（需仓库权限 / 发布配置）</summary>
+<summary>其他方式</summary>
 
-**GitHub Release 预编译包**（仓库 private 时仅协作者可见）
+**GitHub Release 预编译包**
 
-从 [Releases](https://github.com/botiverse/wx-cli/releases) 下载：
+本 fork 与上游私有仓库当前都没有公开 Releases，该路径暂不可用。
+若将来补上 release，产物命名如下：
 
 | 平台 | 文件 |
 |------|------|
@@ -96,24 +136,6 @@ cp target/release/wx ~/.local/bin/wx
 | Linux x86_64 | `wx-linux-x86_64` |
 | Linux arm64 | `wx-linux-arm64` |
 | Windows x86_64 | `wx-windows-x86_64.exe` |
-
-```bash
-chmod +x wx-macos-arm64 && mv wx-macos-arm64 ~/.local/bin/wx
-```
-
-**一键脚本**（raw 链接在 private 仓库下对匿名用户 404；有权限时可用 `gh` 下载 release asset）
-
-```bash
-# 需已登录 gh 且对 botiverse/wx-cli 有读权限
-gh release download -R botiverse/wx-cli -p 'wx-macos-arm64' -O ~/.local/bin/wx
-chmod +x ~/.local/bin/wx
-```
-
-`install.sh` / `install.ps1` 仍维护在仓库内，仓库公开或 raw 可访问后可再启用：
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/botiverse/wx-cli/main/install.sh | bash
-```
 
 **npm**
 
@@ -133,6 +155,7 @@ curl -fsSL https://raw.githubusercontent.com/botiverse/wx-cli/main/install.sh | 
 | **不需要** | **关闭 SIP** |
 | **不需要** | 预先 `codesign` / ad-hoc **重签微信**（默认路径不会改 WeChat.app） |
 | **init 之后** | 日常 `wx sessions` / `history` 等**无需 sudo**，也**不要求微信一直开着** |
+| **分片密钥补不齐时** | 可改用本仓库 `tools/` 的**免 sudo** 方案（需「开发者工具」授权），见下文 |
 
 ### 初始化（只需一次）
 
@@ -158,6 +181,27 @@ sudo wx key extract --hook-seconds 90
 - 官方 **Hardened Runtime** 包：本机 Terminal + `sudo` 即可；若失败，到「系统设置 → 隐私与安全性 → 开发者工具」里勾选你的终端。
 - 部分官网 4.x 本身已是 **ad-hoc**：用户态 LLDB 往往也能工作。
 - **不要**默认对 WeChat 做 ad-hoc 重签：会打乱 TCC 权限、公众号/截图可能异常。仅当 SSH 等无 GUI 场景下 `task_for_pid` 仍失败时，才考虑有副作用的重签；详见 [macOS 权限指南](docs/macos-permission-guide.md)。
+
+> **本 fork 提供的免 sudo 路径（推荐，可一次补齐全部分片）**
+>
+> 上面的 `sudo wx key extract` 只能抓到 hook 挂载**之后**才被打开的库。
+> 微信启动时就已经打开的 `session.db` / `message_N.db` 等冷分片会被漏掉
+> （实测 8/26），需要反复重跑才能补齐。
+>
+> 本仓库 `tools/` 提供 **attach 到运行中的微信** 的方案：hook 挂上后，
+> 微信按需打开数据库时即刻捕获，**无需 sudo、无需重启微信**，
+> 实测 18/18 分片密钥一次补齐。
+>
+> ```bash
+> # 前置：给宿主终端 / App 授予「开发者工具」权限
+> #      系统设置 → 隐私与安全性 → 开发者工具
+> bash tools/hook-attach.sh 300
+> # 期间在微信里：翻历史消息 / 打开公众号 / 搜索 / 点开图片
+> bash tools/map-keys.sh
+> ```
+>
+> 原理、限制与完整实测记录见
+> [docs/macos-arm64-install-and-key-extraction-playbook.md](docs/macos-arm64-install-and-key-extraction-playbook.md)。
 
 **Linux**
 
@@ -189,6 +233,12 @@ sudo wx key extract --hook-seconds 90
 wx doctor
 ```
 
+或使用本仓库 `tools/` 的免 sudo 方案（见上文「免 sudo 路径」）：
+
+```bash
+bash tools/hook-attach.sh 300 && bash tools/map-keys.sh
+```
+
 ---
 
 ## 命令
@@ -204,7 +254,8 @@ wx key set message/message_1.db <64hex>   # 手动写入并校验
 ```
 
 补密钥统一用 **`sudo wx key extract --hook-seconds 90`**（不要用裸的 `wx init --force` 当主路径）。  
-取钥**不需要关闭 SIP**；需本机 GUI Terminal +（Hardened Runtime 包）sudo。
+取钥**不需要关闭 SIP**；需本机 GUI Terminal +（Hardened Runtime 包）sudo。  
+macOS 上若要一次补齐全部分片，改用 `tools/hook-attach.sh`（免 sudo，见上文）。
 
 ### 消息
 
@@ -416,8 +467,9 @@ macOS 取钥依赖本机 Terminal 的 `task_for_pid` / 调试能力，**与是�
 
 | 问题 | 处理 |
 |------|------|
-| `meta.unknown_shards` / doctor 缺关键分片 | `sudo wx key extract --hook-seconds 90`，等待时打开相关聊天 |
-| `wx --version` 偏旧 | `git pull && cargo build --release && cp target/release/wx ~/.local/bin/wx` |
+| `meta.unknown_shards` / doctor 缺关键分片 | `sudo wx key extract --hook-seconds 90`，等待时打开相关聊天；或 macOS 上用 `bash tools/hook-attach.sh 300 && bash tools/map-keys.sh`（免 sudo，一次补齐） |
+| `wx --version` 偏旧 | `git pull && cargo build --release --target aarch64-apple-darwin && cp target/aarch64-apple-darwin/release/wx ~/.local/bin/wx`（Apple Silicon；原生架构去掉 `--target`） |
+| Apple Silicon 上取钥一直失败？ | 二进制很可能编成了 x86_64。用 `file ~/.local/bin/wx` 确认，应为 `arm64`；否则按[安装](#安装)章节交叉编译 |
 | 是否必须关 SIP？ | **否** |
 | 是否必须 ad-hoc 重签微信？ | **默认否**；仅 SSH/无 GUI 且 attach 失败时考虑 |
 | daemon 无响应 | `wx daemon stop` 后任意查询会自动重启 |

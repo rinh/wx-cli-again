@@ -1,38 +1,56 @@
-# wx-cli Windows installer
-# Run with: irm https://raw.githubusercontent.com/botiverse/wx-cli/main/install.ps1 | iex
+# wx-cli Windows installer (source build)
+# Run with: irm https://raw.githubusercontent.com/rinh/wx-cli-again/main/install.ps1 | iex
+#
+# 本 fork 不发布预编译二进制（上游 botiverse/wx-cli 为 private），
+# 因此改为从源码构建：clone → cargo build --release → 安装并加入用户 PATH。
 
 $ErrorActionPreference = "Stop"
 
-$Repo    = "botiverse/wx-cli"
+$Repo    = "rinh/wx-cli-again"
+$RepoUrl = "https://github.com/$Repo.git"
 $BinName = "wx.exe"
-$Asset   = "wx-windows-x86_64.exe"
 $InstallDir = "$env:LOCALAPPDATA\wx-cli"
+$SrcDir = "$env:LOCALAPPDATA\wx-cli-src"
 
-# ── 获取最新版本 ────────────────────────────────────────────
-Write-Host "正在获取最新版本..."
-$Release = Invoke-RestMethod "https://api.github.com/repos/$Repo/releases/latest"
-$Tag = $Release.tag_name
-
-if (-not $Tag) {
-    Write-Error "获取版本失败，请检查网络或访问 https://github.com/$Repo/releases"
+# ── 前置依赖 ──────────────────────────────────────────────────
+if (-not (Get-Command cargo -ErrorAction SilentlyContinue)) {
+    Write-Error "缺少 cargo，请先安装 Rust: https://rustup.rs"
+    exit 1
+}
+if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+    Write-Error "缺少 git，请先安装 Git for Windows"
     exit 1
 }
 
-Write-Host "版本: $Tag"
+# ── 取源码 ────────────────────────────────────────────────────
+if (Test-Path (Join-Path $SrcDir ".git")) {
+    Write-Host "==> 更新已有 clone: $SrcDir"
+    git -C $SrcDir pull --ff-only
+} else {
+    Write-Host "==> 克隆源码到 $SrcDir"
+    git clone --depth 1 $RepoUrl $SrcDir
+}
 
-# ── 下载 ────────────────────────────────────────────────────
-$Url = "https://github.com/$Repo/releases/download/$Tag/$Asset"
-$TmpFile = Join-Path $env:TEMP "wx-cli-download.exe"
+# ── 构建 ──────────────────────────────────────────────────────
+Write-Host "==> 编译中（首次构建需现场编译 OpenSSL + SQLCipher，约 2-5 分钟）..."
+Push-Location $SrcDir
+try {
+    cargo build --release
+} finally {
+    Pop-Location
+}
 
-Write-Host "下载中: $Url"
-Invoke-WebRequest -Uri $Url -OutFile $TmpFile -UseBasicParsing
+$Built = Join-Path $SrcDir "target\release\$BinName"
+if (-not (Test-Path $Built)) {
+    Write-Error "构建产物不存在: $Built"
+    exit 1
+}
 
-# ── 安装 ────────────────────────────────────────────────────
+# ── 安装 ──────────────────────────────────────────────────────
 if (-not (Test-Path $InstallDir)) {
     New-Item -ItemType Directory -Path $InstallDir | Out-Null
 }
-
-Move-Item -Force $TmpFile (Join-Path $InstallDir $BinName)
+Copy-Item -Force $Built (Join-Path $InstallDir $BinName)
 
 # ── 加入 PATH（当前用户） ────────────────────────────────────
 $UserPath = [Environment]::GetEnvironmentVariable("PATH", "User")

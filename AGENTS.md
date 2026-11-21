@@ -28,7 +28,8 @@
 
 ## Push 规则
 
-- remote 名称：`origin` → `git@github.com:botiverse/wx-cli.git`（SSH）
+- remote 名称：`origin` → `https://github.com/rinh/wx-cli-again.git`（本 fork）
+- 上游仓库：`jackwener/wx-cli-again`（只读参考，勿直接推送）
 - 不要使用已 DMCA 的 `jackwener/wx-cli`
 - 每次 commit 后立刻 push（默认分支 `main`）
 - 打 tag 用 `git tag vX.Y.Z && git push origin vX.Y.Z`

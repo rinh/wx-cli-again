@@ -40,7 +40,8 @@ brew install mingw-w64   # 提供 x86_64-w64-mingw32-gcc，zstd-sys 等 C 依赖
 
 - 每次 commit 后必须 push（`git push origin main`）
 - 打 tag 前确认 `cargo check` 和 `cargo update --workspace` 都已完成
-- remote 使用 `origin` → `git@github.com:botiverse/wx-cli.git`（SSH）
+- remote 使用 `origin` → `https://github.com/rinh/wx-cli-again.git`（本 fork）
+- 上游仓库 `jackwener/wx-cli-again` 仅作只读参考
 - 不要使用已 DMCA 的 `jackwener/wx-cli`
 
 ## 平台兼容性检查清单

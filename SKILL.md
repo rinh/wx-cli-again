@@ -36,28 +36,55 @@ description: "wx-cli — 从本地微信数据库查询聊天记录、联系人�
 
 ## 安装
 
-源码仓库：[botiverse/wx-cli](https://github.com/botiverse/wx-cli)（当前 **private**）。
+源码仓库：[rinh/wx-cli-again](https://github.com/rinh/wx-cli-again)（本 fork，公开）；
+上游仓库：[jackwener/wx-cli-again](https://github.com/jackwener/wx-cli-again)。
 
-### 推荐：源码构建（需仓库读权限 + SSH）
+### 推荐：源码构建
 
 ```bash
-git clone git@github.com:botiverse/wx-cli.git && cd wx-cli
+git clone https://github.com/rinh/wx-cli-again.git && cd wx-cli-again
+rustc -vV | grep host          # 先确认目标架构
+```
+
+**Apple Silicon**（`host: x86_64-apple-darwin` 表示 rustup 跑在 Rosetta 下，
+必须显式交叉编译，否则产出的 x86_64 二进制在取钥阶段不可用）：
+
+```bash
+rustup target add aarch64-apple-darwin
+cargo build --release --target aarch64-apple-darwin
+mkdir -p ~/.local/bin && cp target/aarch64-apple-darwin/release/wx ~/.local/bin/wx
+```
+
+**原生架构**（`host: aarch64-apple-darwin` / Linux x86_64 等）：
+
+```bash
 cargo build --release
 mkdir -p ~/.local/bin && cp target/release/wx ~/.local/bin/wx
+```
+
+```bash
 wx --version
+file ~/.local/bin/wx      # macOS 上确认为 arm64
 ```
 
 升级已有安装：
 
 ```bash
-cd /path/to/wx-cli && git pull && cargo build --release && cp target/release/wx ~/.local/bin/wx
+cd /path/to/wx-cli-again && git pull
+cargo build --release --target aarch64-apple-darwin   # Apple Silicon
+cp target/aarch64-apple-darwin/release/wx ~/.local/bin/wx
+```
+
+一键安装脚本（源码构建版）：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/rinh/wx-cli-again/main/install.sh | bash
 ```
 
 ### 其他
 
-- 有 `gh` 权限时：`gh release download -R botiverse/wx-cli -p 'wx-macos-arm64' -O ~/.local/bin/wx`
 - **不要**依赖公开 npm `@jackwener/wx-cli`（registry 上可能是旧版本）
-- 匿名 curl `install.sh` 在 private 仓库下会 404
+- 本 fork 与上游私有仓库当前都没有公开 Releases，release 下载路径不可用
 
 ---
 
@@ -77,6 +104,20 @@ sudo wx init
 ```bash
 sudo wx key extract --hook-seconds 90
 ```
+
+**或用本 fork 的免 sudo 方案（推荐，可一次补齐全部分片）**：
+`sudo wx key extract` 只能抓到 hook 挂载之后才被打开的库，微信启动期已打开的
+冷分片会被漏掉（实测 8/26）。`tools/hook-attach.sh` 直接 attach 到**运行中**的
+微信，无需 sudo、无需重启微信，实测 18/18 一次补齐：
+
+```bash
+# 前置：宿主终端/App 需有「开发者工具」权限（系统设置 → 隐私与安全性 → 开发者工具）
+bash tools/hook-attach.sh 300
+# 期间在微信里：翻历史消息 / 打开公众号 / 搜索 / 点开图片
+bash tools/map-keys.sh
+```
+
+原理与完整实测记录见 `docs/macos-arm64-install-and-key-extraction-playbook.md`。
 
 `wx init` 会：检测数据目录 → 内存扫描 + LLDB hook 取 per-DB 密钥 → 写入 `~/.wx-cli/config.json` 与 `all_keys.json`。
 
@@ -363,7 +404,7 @@ CHAT 参数支持昵称、备注名、微信 ID，模糊匹配。不确定准确
 
 **是不是必须 ad-hoc 重签微信？**：默认不需要。只有 SSH / 无 GUI 且 attach 失败时才考虑，且有副作用。
 
-**微信重启后密钥失效 / 新分片没 key**：重新运行 `sudo wx key extract --hook-seconds 90`（微信必须正在运行；等待期间点开相关聊天）。
+**微信重启后密钥失效 / 新分片没 key**：重新运行 `sudo wx key extract --hook-seconds 90`（微信必须正在运行；等待期间点开相关聊天），或用 `bash tools/hook-attach.sh 300 && bash tools/map-keys.sh`（免 sudo，一次补齐）。
 
 **daemon 无响应**：`wx daemon stop` 后重新调用任意命令自动重启。
 
