@@ -49,6 +49,11 @@ npx skills add botiverse/wx-cli -g
 > 匿名 `curl` / 公开 npm 旧包（`@jackwener/wx-cli@0.3.0`）**拿不到**本仓库最新二进制。  
 > 有仓库读权限时，请用下面的 **源码构建**（推荐）。
 
+> **Apple Silicon 用户注意**：本机 Rust 工具链默认 host 可能是 `x86_64-apple-darwin`，
+> 直出的 x86_64 二进制在取钥阶段会因跨架构注入失败。
+> 完整实测记录（含 arm64 交叉编译、分片密钥补齐的完整排查过程）见
+> **[docs/macos-arm64-install-and-key-extraction-playbook.md](docs/macos-arm64-install-and-key-extraction-playbook.md)**。
+
 ### 从源码构建（推荐）
 
 ```bash
